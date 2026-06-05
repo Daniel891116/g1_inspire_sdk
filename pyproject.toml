@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "g1_inspire_sdk"
+version = "0.1.0"
+description = "Modular control interface for the Unitree G1 humanoid and Inspire RH56 dexterous hand"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Soofiyan Atar" }]
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "pinocchio>=3.0",
+    "casadi",
+    "rerun-sdk>=0.20",
+    "pymodbus",
+    # Bring-up note: unitree_sdk2py + inspire_sdkpy live outside PyPI in this
+    # project; install them from your existing checkout. See README.
+]
+
+[project.optional-dependencies]
+viz = ["meshcat"]
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["g1_inspire_sdk*"]
+
+[tool.setuptools.package-data]
+"g1_inspire_sdk._config" = ["*.yaml"]
+"g1_inspire_sdk._ik" = ["*.pkl"]

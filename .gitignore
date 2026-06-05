@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual envs
+.venv/
+venv/
+env/
+.env
+
+# Build / install artefacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local mesh / model caches the SDK auto-generates next to the bundled
+# pre-built one. The shipped cache is checked in deliberately so first-
+# clone IK init is instant; any *additional* caches users build go here.
+# (Uncomment the line below if you decide NOT to ship the cache.)
+# g1_inspire_sdk/_ik/*.pkl
+
+# Rerun recordings
+*.rrd

@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="inspire_gen4_hand_left">
+  <link name="left_base"/>
+  <joint name="base_joint" type="fixed">
+    <parent link="left_base"/>
+    <child link="left_hand_base_link"/>
+    <origin xyz="0 0 0.09" rpy="0.0 0.0 1.57"/>
+  </joint>
+
+  <!-- Base Link -->
+  <link name="left_hand_base_link">
+    <inertial>
+      <origin xyz="-0.0025264 -0.066047 0.0019598" rpy="0 0 0"/>
+      <mass value="0.14143"/>
+      <inertia ixx="0.00012281" ixy="2.1711E-06" ixz="1.7709E-06" iyy="8.3832E-05" iyz="-1.6551E-06" izz="7.6663E-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_base_link.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0.0075 0.015" rpy="1.57 0 0" />
+      <geometry>
+        <box size="0.09 0.07 0.0474"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.014 -0.015 -0.015" rpy="1.57 0 0" />
+      <geometry>
+        <box size="0.05 0.03 0.0274"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.0 -0.005 -0.04" rpy="1.57 0 0" />
+      <geometry>
+        <box size="0.06 0.03 0.0474"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="-0.001 -0.003 -0.075" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.035" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- left Thumb Links and Joints -->
+  <link name="left_thumb_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_1.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_1.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_thumb_1_joint" type="revolute">
+    <origin xyz="-0.028166 -0.02409 -0.022183" rpy="0 0 0.15" />
+    <parent link="left_hand_base_link" />
+    <child link="left_thumb_1" />
+    <axis xyz="0 0 1" />
+    <limit lower="0.3" upper="1.2" effort="1" velocity="0.5" />
+  </joint>
+
+  <link name="left_thumb_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_2.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_2.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_thumb_2_joint" type="revolute">
+    <origin xyz="-0.0096402 -0.0097687 0.00125" rpy="1.5707998 0.035 0.0" />
+    <parent link="left_thumb_1" />
+    <child link="left_thumb_2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.12" upper="0.56" effort="1" velocity="0.2" />
+  </joint>
+
+  <link name="left_thumb_3">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_3.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_3.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_thumb_3_joint" type="revolute">
+    <origin xyz="-0.0385855 0.0137354 -0.00085" rpy="0 0 -0.05" />
+    <parent link="left_thumb_2" />
+    <child link="left_thumb_3" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="0.4" effort="1" velocity="0.2" />
+    <mimic joint="left_thumb_2_joint" multiplier="0.40" offset="0" />
+  </joint>
+
+  <link name="left_thumb_4">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_4.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_thumb_4.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_thumb_4_joint" type="revolute">
+    <origin xyz="-0.0204657 0.0083768 0.0002" rpy="0 0 -0.05" />
+    <parent link="left_thumb_3" />
+    <child link="left_thumb_4" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="0.6" effort="1" velocity="0.2" />
+    <mimic joint="left_thumb_2_joint" multiplier="0.60" offset="0" />
+  </joint>
+
+  <!-- left Index Links and Joints -->
+  <link name="left_index_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_index_1.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_index_1.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_index_1_joint" type="revolute">
+    <origin xyz="-0.041095 -0.00364 0.063427" rpy="1.6057 -0. -1.5708" />
+    <parent link="left_hand_base_link" />
+    <child link="left_index_1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.45" effort="1" velocity="0.5" />
+  </joint>
+
+  <link name="left_index_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_index_2.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_index_2.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_index_2_joint" type="revolute">
+    <origin xyz="0.0025949 0.0326722 -0.0003" rpy="0 0 0" />
+    <parent link="left_index_1" />
+    <child link="left_index_2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.6" effort="1" velocity="0.5" />
+    <mimic joint="left_index_1_joint" multiplier="1.05" offset="0" />
+  </joint>
+
+  <!-- left Middle Links and Joints -->
+  <link name="left_middle_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_middle_1.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_middle_1.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_middle_1_joint" type="revolute">
+    <origin xyz="-0.019516 -0.00364 0.064067" rpy="1.5708 0.0 -1.5708" />
+    <parent link="left_hand_base_link" />
+    <child link="left_middle_1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.45" effort="1" velocity="0.5" />
+  </joint>
+
+  <link name="left_middle_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_middle_2.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_middle_2.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_middle_2_joint" type="revolute">
+    <origin xyz="0.0028436 0.032651 -0.0003" rpy="0 0 0" />
+    <parent link="left_middle_1" />
+    <child link="left_middle_2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.6" effort="1" velocity="0.5" />
+    <mimic joint="left_middle_1_joint" multiplier="1.05" offset="0" />
+  </joint>
+
+  <!-- left Ring Links and Joints -->
+  <link name="left_ring_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_ring_1.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_ring_1.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_ring_1_joint" type="revolute">
+    <origin xyz="0.002116 -0.00364 0.063962" rpy="1.5184 0. -1.5708" />
+    <parent link="left_hand_base_link" />
+    <child link="left_ring_1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.45" effort="1" velocity="0.5" />
+  </joint>
+
+  <link name="left_ring_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_ring_2.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_ring_2.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_ring_2_joint" type="revolute">
+    <origin xyz="0.0031431 0.032624 -0.0003" rpy="0 0 0" />
+    <parent link="left_ring_1" />
+    <child link="left_ring_2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.6" effort="1" velocity="0.5" />
+    <mimic joint="left_ring_1_joint" multiplier="1.05" offset="0" />
+  </joint>
+
+  <!-- left Little Links and Joints -->
+  <link name="left_little_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_little_1.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_little_1.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_little_1_joint" type="revolute">
+    <origin xyz="0.023507 -0.00364 0.06084" rpy="1.4661 0. -1.5707927" />
+    <parent link="left_hand_base_link" />
+    <child link="left_little_1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.45" effort="1" velocity="0.5" />
+  </joint>
+
+  <link name="left_little_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_little_2.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/left_little_2.obj" />
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="left_little_2_joint" type="revolute">
+    <origin xyz="0.0023072 0.032694 -0.0003" rpy="0 0 0" />
+    <parent link="left_little_1" />
+    <child link="left_little_2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0.0" upper="1.6" effort="1" velocity="0.5" />
+    <mimic joint="left_little_1_joint" multiplier="1.05" offset="0" />
+  </joint>
+
+  <link name='left_thumb_tip'>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_thumb_tip_joint" type="fixed">
+    <origin xyz="-0.033 0.012 -0.009" rpy="0 0 0"/>
+    <parent link="left_thumb_4"/>
+    <child link="left_thumb_tip"/>
+  </joint>
+  <link name='left_index_tip'>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_index_tip_joint" type="fixed">
+    <origin xyz="0.004 0.053 -0.008" rpy="0 0 0"/>
+    <parent link="left_index_2"/>
+    <child link="left_index_tip"/>
+  </joint>
+  <link name='left_middle_tip'>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_middle_tip_joint" type="fixed">
+    <origin xyz="0.007 0.055 -0.008" rpy="0 0 0"/>
+    <parent link="left_middle_2"/>
+    <child link="left_middle_tip"/>
+  </joint>
+  <link name='left_ring_tip'>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_ring_tip_joint" type="fixed">
+    <origin xyz="0.006 0.052 -0.008" rpy="0 0 0"/>
+    <parent link="left_ring_2"/>
+    <child link="left_ring_tip"/>
+  </joint>
+  <link name='left_little_tip'>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_little_tip_joint" type="fixed">
+    <origin xyz="0.003 0.042 -0.008" rpy="0 0 0"/>
+    <parent link="left_little_2"/>
+    <child link="left_little_tip"/>
+  </joint>
+
+</robot>

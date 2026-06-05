@@ -1,0 +1,69 @@
+#
+# G1 control configuration.
+#
+# Joint indexing follows the Unitree G1 29-DOF body layout:
+#   legs   = motors 0..11
+#   waist  = motors 12..14
+#   arms   = motors 15..21 (left), 22..28 (right)
+#
+control_dt: 0.02
+
+lowcmd_topic: "rt/lowcmd"
+lowstate_topic: "rt/lowstate"
+
+leg_joint2motor_idx: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+kps: [100, 100, 100, 150, 40, 40, 100, 100, 100, 150, 40, 40]
+kds: [2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2]
+default_angles: [-0.1, 0.0, 0.0, 0.3, -0.2, 0.0, -0.1, 0.0, 0.0, 0.3, -0.2, 0.0]
+
+# Waist joints (indices 12-14) are held at waist_target with the gains below
+# to keep the pelvis stable while only the arms are moving.
+waist_joint2motor_idx: [12, 13, 14]
+waist_kps: [300, 300, 300]
+waist_kds: [3, 3, 3]
+waist_target: [0, 0, 0]
+
+# Arm joints — per-side. Concatenated `arm_*` views are derived in Config
+# (left then right) for code that wants the combined 14-DOF arrays.
+left_arm_joint2motor_idx: [15, 16, 17, 18, 19, 20, 21]
+right_arm_joint2motor_idx: [22, 23, 24, 25, 26, 27, 28]
+
+left_arm_kps: [100, 100, 50, 50, 20, 20, 20]
+right_arm_kps: [100, 100, 50, 50, 20, 20, 20]
+
+left_arm_kds: [2, 2, 2, 2, 1, 1, 1]
+right_arm_kds: [2, 2, 2, 2, 1, 1, 1]
+
+# Default joint targets used by move_to_default_pos.
+left_arm_target: [0, 0, 0, 0, 0, 0, 0]
+right_arm_target: [0, 0, 0, 0, 0, 0, 0]
+
+# Larger tau => smoother/slower arm target response from the IK output LPF.
+arm_cmd_filter_tau: 0.30
+
+# Default EE poses (robot pelvis frame, meters). Used as the "home" pose
+# returned by G1Arm.default_ee_targets() — useful starting point when
+# scripting EE-pose trajectories.
+left_hand_home_xyz: [0.25, 0.15, 0.1]
+right_hand_home_xyz: [0.25, -0.15, 0.1]
+
+# Per-hand mass (kg) and COM offset from the pinocchio L_ee/R_ee frame
+# (metres, in EE LOCAL frame; +x points out of the wrist along the palm).
+# Used by ArmAdmittance to subtract the hand's gravity contribution from
+# the RNEA-residual wrench and to shift the Jacobian to the hand COM for
+# compliant control.
+#
+# IMPORTANT: the numbers below are placeholders — measure each hand
+# (mass on a scale, COM by feel / spec sheet) before relying on them.
+# mass_kg=0.0 disables the subtraction.
+hand_config:
+  models:
+    none:
+      mass_kg: 0.0
+      com_local: [0.0, 0.0, 0.0]
+    inspire:
+      mass_kg: 0.0 # TODO: measure your Inspire RH56 (typical ~0.54 kg)
+      com_local: [0.045, 0.0, 0.0]
+  active:
+    left: none
+    right: inspire
