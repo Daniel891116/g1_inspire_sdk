@@ -1,15 +1,20 @@
 """Rerun-based motion preview.
 
-Loads the G1 URDF in Pinocchio, runs forward-kinematics on every command,
-and logs the resulting link transforms to a Rerun viewer. Attach an
-instance to ``G1Arm`` / ``InspireHand`` (or to ``G1InspireRobot``) and
-joint targets are mirrored to the viewer each tick — useful for sanity-
-checking a trajectory before running it on hardware.
+Loads the G1+Inspire URDF in Pinocchio, runs forward-kinematics on every
+command, and logs the resulting link transforms to a Rerun viewer.
+Attach an instance to ``G1Arm`` / ``InspireHand`` (or to ``G1InspireRobot``)
+and joint targets are mirrored to the viewer each tick — useful for
+sanity-checking a trajectory before running it on hardware.
 
-Hand state is shown as 6-DOF scalar time-series rather than full 3D
-kinematics (the merged G1+Inspire URDF has 24 finger sub-joints whose
-canonical 6-DOF mapping is task-specific; scalar plots get the operator
-the signal they need without that work).
+Hand visualization: the default URDF (``g1_body29_inspire_hand.urdf``)
+includes the Inspire hand kinematics. The 6-DOF canonical hand command
+is mapped onto the 6 actuated finger joints and the URDF mimic
+relationships are applied manually (Pinocchio does not honour URDF
+``<mimic>`` tags). Hand commands are also logged as scalar time-series
+for graphing.
+
+If a URDF without finger joints is supplied (e.g. ``g1_body29_hand14.urdf``)
+the hand-FK path is silently skipped and only scalar logging fires.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ import rerun as rr
 
 from ._config import (
     Config,
+    DEFAULT_G1_INSPIRE_URDF,
     DEFAULT_G1_URDF,
     DEFAULT_G1_YAML,
     ASSETS_ROOT,
@@ -34,6 +40,45 @@ _ENTITY_ROOT = "robot"
 _EE_TARGET_ROOT = "ee_target"
 _HAND_SCALAR_ROOT = "hand"
 
+_CANONICAL_HAND_NAMES = (
+    "index_mcp",
+    "middle_mcp",
+    "ring_mcp",
+    "little_mcp",
+    "thumb_rotate",
+    "thumb_flex",
+)
+
+
+def _hand_joint_specs(side: str) -> dict:
+    """Mapping spec for one Inspire hand in the G1+Inspire URDF.
+
+    Returns a dict with:
+      * ``actuated``: {canonical_name: urdf_joint_name}  (6 entries)
+      * ``mimic``: list of ``(driven_joint, source_canonical, multiplier)``
+        — extracted from the URDF's ``<mimic>`` tags. Pinocchio drops
+        mimic info on load, so the preview applies these relationships
+        manually each FK update.
+    """
+    p = side  # "left" or "right"
+    actuated = {
+        "index_mcp": f"{p}_index_1_joint",
+        "middle_mcp": f"{p}_middle_1_joint",
+        "ring_mcp": f"{p}_ring_1_joint",
+        "little_mcp": f"{p}_little_1_joint",
+        "thumb_rotate": f"{p}_thumb_1_joint",
+        "thumb_flex": f"{p}_thumb_2_joint",
+    }
+    mimic = [
+        (f"{p}_index_2_joint", "index_mcp", 1.05),
+        (f"{p}_middle_2_joint", "middle_mcp", 1.05),
+        (f"{p}_ring_2_joint", "ring_mcp", 1.05),
+        (f"{p}_little_2_joint", "little_mcp", 1.05),
+        (f"{p}_thumb_3_joint", "thumb_flex", 0.40),
+        (f"{p}_thumb_4_joint", "thumb_flex", 0.60),
+    ]
+    return {"actuated": actuated, "mimic": mimic}
+
 
 class RerunPreview:
     """Rerun preview backend for G1 + Inspire control.
@@ -41,8 +86,11 @@ class RerunPreview:
     Parameters
     ----------
     urdf_path
-        URDF to load for the 3D view. Defaults to ``g1_body29_hand14.urdf``
-        (full G1 body, simple hand stub).
+        URDF to load for the 3D view. Defaults to
+        ``g1_body29_inspire_hand.urdf`` (full G1 body with the Inspire
+        right + left hand kinematics embedded). Pass
+        ``DEFAULT_G1_URDF`` for the simpler ``g1_body29_hand14.urdf``
+        if you don't want the per-finger preview.
     spawn
         Launch the Rerun viewer subprocess. Set False to connect to an
         existing viewer or to record to file instead.
@@ -60,7 +108,7 @@ class RerunPreview:
         application_id: str = "g1_inspire_preview",
         config_path: "str | Path | None" = None,
     ) -> None:
-        self.urdf_path = Path(urdf_path) if urdf_path else Path(DEFAULT_G1_URDF)
+        self.urdf_path = Path(urdf_path) if urdf_path else Path(DEFAULT_G1_INSPIRE_URDF)
         self.mesh_dir = self.urdf_path.parent
         self.config = Config(config_path or DEFAULT_G1_YAML)
 
@@ -109,10 +157,27 @@ class RerunPreview:
             "right_wrist_yaw_joint",
         ]
 
-        # Validate joints exist (helps catch URDF mismatches early).
+        # Validate arm joints exist (helps catch URDF mismatches early).
         for n in self._left_arm_joint_names + self._right_arm_joint_names:
             if n not in self._joint_q_idx:
                 raise RuntimeError(f"joint {n!r} not found in URDF {self.urdf_path}")
+
+        # Build per-side hand-joint mapping IF the URDF has finger joints.
+        # When the URDF is the simple hand14 variant the dicts stay empty
+        # and update_hand only logs scalars.
+        self._hand_actuated_idx: dict = {"left": {}, "right": {}}
+        self._hand_mimic_idx: dict = {"left": [], "right": []}
+        for side in ("left", "right"):
+            spec = _hand_joint_specs(side)
+            if all(n in self._joint_q_idx for n in spec["actuated"].values()):
+                self._hand_actuated_idx[side] = {
+                    canon: self._joint_q_idx[urdf] for canon, urdf in spec["actuated"].items()
+                }
+                self._hand_mimic_idx[side] = [
+                    (self._joint_q_idx[driven], src_canon, mult)
+                    for driven, src_canon, mult in spec["mimic"]
+                    if driven in self._joint_q_idx
+                ]
 
         self._log_static_meshes()
         self._update_link_transforms(self._q)
@@ -134,14 +199,29 @@ class RerunPreview:
             self._update_link_transforms(self._q)
 
     def update_hand(self, side: str, q6: np.ndarray) -> None:
-        """Log a 6-DOF Inspire hand state as scalar time-series."""
+        """Update the 3D hand pose AND log scalar time-series for a 6-DOF
+        canonical Inspire command.
+
+        If the URDF doesn't contain finger joints (e.g. the simpler
+        ``g1_body29_hand14.urdf``) only the scalar logging fires.
+        """
         q6 = np.asarray(q6, dtype=np.float64).reshape(-1)
         if q6.size != 6:
             raise ValueError(f"q6 must have length 6, got {q6.shape}")
-        names = ("index_mcp", "middle_mcp", "ring_mcp", "little_mcp",
-                 "thumb_rotate", "thumb_flex")
-        for i, n in enumerate(names):
+        for i, n in enumerate(_CANONICAL_HAND_NAMES):
             rr.log(f"{_HAND_SCALAR_ROOT}/{side}/{n}", rr.Scalars(float(q6[i])))
+
+        actuated = self._hand_actuated_idx.get(side, {})
+        if not actuated:
+            return
+
+        canon = {name: float(q6[i]) for i, name in enumerate(_CANONICAL_HAND_NAMES)}
+        with self._lock:
+            for canon_name, q_idx in actuated.items():
+                self._q[q_idx] = canon[canon_name]
+            for q_idx, src_canon, mult in self._hand_mimic_idx.get(side, []):
+                self._q[q_idx] = mult * canon[src_canon]
+            self._update_link_transforms(self._q)
 
     def update_ee_targets(
         self,
