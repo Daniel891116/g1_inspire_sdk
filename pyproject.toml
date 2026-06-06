@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Modular control interface for the Unitree G1 humanoid and Inspire RH56 dexterous hand"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Soofiyan Atar" }]
+authors = [{ name = "Daniel Huang" }]
 dependencies = [
     "numpy",
     "pyyaml",
