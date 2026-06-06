@@ -11,16 +11,18 @@ object and a single dry-run / live-mode switch.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
+from .camera import RealSenseCamera
 from .g1_arm import G1Arm
 from .inspire_hand import InspireHand, DEFAULT_LEFT_IP, DEFAULT_RIGHT_IP
 
 
 class G1InspireRobot:
-    """G1 arm + Inspire hand bundled behind one lifecycle and one preview.
+    """G1 arm + Inspire hand (+ optional RealSense camera) bundled behind one
+    lifecycle and one preview.
 
     Parameters
     ----------
@@ -37,11 +39,17 @@ class G1InspireRobot:
         Override the bundled g1.yaml.
     left_ip, right_ip
         Modbus IPs for the Inspire state reader.
+    camera
+        Optional camera spec — pass ``True`` for a default-configured
+        ``RealSenseCamera`` (640x480 @ 30 fps), a kwargs dict (``{"width":
+        1280, "fps": 15, ...}``), or a fully-constructed ``RealSenseCamera``
+        instance for full control. Pass ``False``/``None`` to skip the
+        camera entirely.
     dry_run
-        Skip all DDS / modbus IO. Both subsystems still expose state and
-        accept commands; the preview shows what would have been sent.
+        Skip all DDS / modbus / camera IO. Subsystems still expose state
+        and accept commands; the preview shows what would have been sent.
     preview
-        Optional ``RerunPreview``. Attached to both subsystems if provided.
+        Optional ``RerunPreview``. Attached to every subsystem present.
     """
 
     def __init__(
@@ -53,6 +61,7 @@ class G1InspireRobot:
         config_path: "str | Path | None" = None,
         left_ip: str = DEFAULT_LEFT_IP,
         right_ip: str = DEFAULT_RIGHT_IP,
+        camera: "bool | dict | RealSenseCamera | None" = None,
         dry_run: bool = False,
         preview: Optional[object] = None,
     ) -> None:
@@ -71,17 +80,48 @@ class G1InspireRobot:
             dry_run=dry_run,
             preview=preview,
         )
+        self.camera: "RealSenseCamera | None" = self._build_camera(
+            camera, dry_run=dry_run, preview=preview
+        )
         self.preview = preview
         self.dry_run = dry_run
+
+    @staticmethod
+    def _build_camera(
+        spec: "bool | dict | RealSenseCamera | None",
+        *,
+        dry_run: bool,
+        preview: Any,
+    ) -> "RealSenseCamera | None":
+        if spec is None or spec is False:
+            return None
+        if isinstance(spec, RealSenseCamera):
+            # User-built instance: respect their settings, just (re)attach
+            # the preview if they didn't already.
+            if preview is not None and spec._preview is None:
+                spec.attach_preview(preview)
+            return spec
+        if spec is True:
+            return RealSenseCamera(dry_run=dry_run, preview=preview)
+        if isinstance(spec, dict):
+            kw = dict(spec)
+            kw.setdefault("dry_run", dry_run)
+            kw.setdefault("preview", preview)
+            return RealSenseCamera(**kw)
+        raise TypeError(
+            f"camera must be bool/dict/RealSenseCamera/None, got {type(spec).__name__}"
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def connect(self) -> None:
-        """Connect both subsystems in the safe order (arm first)."""
+        """Connect every subsystem in the safe order (arm, hand, camera)."""
         self.arm.connect()
         self.hand.connect()
+        if self.camera is not None:
+            self.camera.connect()
 
     def initialize(self) -> None:
         """Run the startup sequence on the arm, then open the hand."""
@@ -94,10 +134,18 @@ class G1InspireRobot:
         """Start the arm publisher (the hand has no streaming thread)."""
         self.arm.start_streaming()
 
+    def capture_camera(self) -> "dict | None":
+        """Capture one camera frame. Returns ``None`` if no camera was attached."""
+        if self.camera is None:
+            return None
+        return self.camera.capture()
+
     def shutdown(self) -> None:
-        """Stop streaming, send damping cmd, drop DDS handles."""
+        """Stop streaming, send damping cmd, drop DDS / camera handles."""
         self.arm.shutdown()
         self.hand.shutdown()
+        if self.camera is not None:
+            self.camera.shutdown()
 
     def __enter__(self) -> "G1InspireRobot":
         self.connect()

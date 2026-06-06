@@ -15,12 +15,18 @@ dependencies = [
     "pinocchio>=3.0",
     "casadi",
     "rerun-sdk>=0.20",
-    "pymodbus",
     # Bring-up note: unitree_sdk2py + inspire_sdkpy live outside PyPI in this
     # project; install them from your existing checkout. See README.
 ]
 
 [project.optional-dependencies]
+# Inspire hand modbus state reader. Required only for live Inspire control.
+hand = ["pymodbus"]
+# RealSense D435i camera support. Required only when using RealSenseCamera
+# or G1InspireRobot(camera=...). Skip if you only need arm + hand control.
+camera = ["pyrealsense2"]
+# Meshcat-based visualization (only needed when G1_29_ArmIK is constructed
+# with Visualization=True; not used by RerunPreview).
 viz = ["meshcat"]
 
 [tool.setuptools]

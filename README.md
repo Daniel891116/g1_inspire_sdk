@@ -11,13 +11,15 @@ in 3D before sending it to hardware.
   optional 250 Hz publisher thread.
 - `InspireHand` — DDS publisher for one or both Inspire hands, modbus state
   reader, soft-limit clipping, `open()` / `close_fist()` convenience.
-- `G1InspireRobot` — facade owning one arm + one hand with a single
-  `connect / initialize / start_streaming / shutdown` lifecycle and a
-  `step()` helper to drive both subsystems in one call.
+- `RealSenseCamera` — Intel RealSense D435i wrapper. Color + depth + optional
+  coloured point cloud. Lazy `pyrealsense2` import, dry-run synthetic frames.
+- `G1InspireRobot` — facade owning one arm + one hand + optional camera with
+  a single `connect / initialize / start_streaming / shutdown` lifecycle
+  and a `step()` helper to drive both subsystems in one call.
 - `RerunPreview` — loads the G1 URDF in Pinocchio, mirrors every joint
-  command to a Rerun 3D view, plus EE target frames and hand joint
-  scalar time-series.
-- `dry_run=True` on any of the above skips DDS/modbus entirely so the
+  command to a Rerun 3D view, plus EE target frames, hand joint scalar
+  time-series, and camera RGB / depth / point-cloud streams.
+- `dry_run=True` on any of the above skips DDS/modbus/camera I/O so the
   preview shows what *would* have been sent — same code runs against the
   preview before pointing it at hardware.
 
@@ -60,11 +62,28 @@ pip install numpy pyyaml "pinocchio>=3.0" casadi "rerun-sdk>=0.20"
   pip install /path/to/inspire_hand_sdk
   ```
 
-- `pymodbus` — used by the Inspire FSR zero-out:
+- `pymodbus` — used by the Inspire FSR zero-out. Pulled in via the
+  `[hand]` extra:
 
   ```bash
-  pip install pymodbus
+  pip install "g1_inspire_sdk[hand]"
   ```
+
+### Required for the RealSense camera only
+
+(Not needed for arm/hand-only workflows or `RealSenseCamera(dry_run=True)`.)
+
+- `pyrealsense2` — Intel RealSense SDK Python bindings. Pulled in via the
+  `[camera]` extra:
+
+  ```bash
+  pip install "g1_inspire_sdk[camera]"
+  ```
+
+  (Or just `pip install pyrealsense2` if you're not using `pip install -e .`.)
+
+  Lazy-imported inside `RealSenseCamera.connect()` so the SDK still
+  imports cleanly without it.
 
 ### Optional
 
@@ -92,6 +111,7 @@ g1_inspire_sdk/
 │   ├── inspire_hand.py         # InspireHand
 │   ├── robot.py                # G1InspireRobot
 │   ├── preview.py              # RerunPreview
+│   ├── camera.py               # RealSenseCamera (D435i)
 │   ├── _common/                # command_helper, remote_controller, weighted_moving_filter
 │   ├── _config/                # Config loader + g1.yaml
 │   └── _ik/                    # G1_29_ArmIK + cached reduced-model pickle, ArmAdmittance, force controllers
@@ -103,7 +123,9 @@ g1_inspire_sdk/
 │   ├── 02_preview_ee_trajectory.py
 │   ├── 03_live_control.py
 │   ├── 04_live_with_preview.py
-│   └── 05_live_ee_control.py
+│   ├── 05_live_ee_control.py
+│   ├── 06_pick_and_place_preview.py
+│   └── 07_camera_preview.py
 ├── pyproject.toml
 ├── .gitignore
 └── README.md
@@ -158,6 +180,36 @@ with G1InspireRobot("eth0", arm_side="both") as robot:
     ...
 ```
 
+### Add a RealSense camera to the loop
+
+```python
+robot = G1InspireRobot(
+    network_interface="eth0",
+    arm_side="both",
+    hand_side="right",
+    camera=True,                     # default-configured D435i
+    # or: camera={"width": 1280, "height": 720, "fps": 15, "pointcloud": True}
+    # or: camera=RealSenseCamera(...)  for full control
+    preview=RerunPreview(spawn=True),
+)
+robot.connect()       # DDS + camera bring-up
+robot.initialize()
+robot.start_streaming()
+frame = robot.capture_camera()
+# frame["color"] (HxWx3 BGR), frame["depth"] (HxW uint16, units = cam.depth_scale m)
+```
+
+Or use the camera standalone:
+
+```python
+from g1_inspire_sdk import RealSenseCamera, RerunPreview
+
+preview = RerunPreview(spawn=True)
+with RealSenseCamera(width=640, height=480, fps=30, preview=preview) as cam:
+    for _ in range(300):
+        cam.capture()    # auto-streams RGB + depth to preview
+```
+
 ## Control modes
 
 | API | Input | Output | Notes |
@@ -167,6 +219,8 @@ with G1InspireRobot("eth0", arm_side="both") as robot:
 | `hand.set_joint_targets(q_left=, q_right=)` | 6-D canonical each | Inspire DDS publish | Soft-clipped |
 | `hand.open() / close_fist()` | — | Inspire DDS publish | Convenience |
 | `robot.step(q_arm=, q_hand_right=, ...)` | mix | Drives both subsystems | Pass `ee_targets=(L, R)` instead of `q_arm` for Cartesian |
+| `cam.capture()` | — | Returns `{color, depth, points, colors, timestamp}` | Auto-mirrors to preview if attached |
+| `robot.capture_camera()` | — | Same dict (or `None` if no camera) | Convenience shortcut |
 
 Joint order for the hand (canonical 6-DOF, soft limits):
 

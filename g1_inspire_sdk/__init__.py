@@ -15,6 +15,7 @@ For a quick joint trajectory preview::
     # ... robot.step(q_arm=..., q_hand_right=...) ...
 """
 
+from .camera import RealSenseCamera
 from .g1_arm import G1Arm
 from .inspire_hand import (
     InspireHand,
@@ -46,6 +47,7 @@ from ._config import (
 __all__ = [
     "G1Arm",
     "InspireHand",
+    "RealSenseCamera",
     "G1InspireRobot",
     "RerunPreview",
     "init_dds",

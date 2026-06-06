@@ -39,6 +39,7 @@ from ._config import (
 _ENTITY_ROOT = "robot"
 _EE_TARGET_ROOT = "ee_target"
 _HAND_SCALAR_ROOT = "hand"
+_CAMERA_ROOT = "camera"
 
 _CANONICAL_HAND_NAMES = (
     "index_mcp",
@@ -233,6 +234,90 @@ class RerunPreview:
             self._log_frame(f"{_EE_TARGET_ROOT}/left", np.asarray(L_tf, dtype=np.float64))
         if R_tf is not None:
             self._log_frame(f"{_EE_TARGET_ROOT}/right", np.asarray(R_tf, dtype=np.float64))
+
+    def set_camera_intrinsics(
+        self,
+        intrinsics: dict,
+        T_cam_in_world: "np.ndarray | None" = None,
+    ) -> None:
+        """Log the camera's pinhole intrinsics (and optional pose) as static.
+
+        ``intrinsics`` is the dict produced by ``RealSenseCamera`` —
+        ``{width, height, fx, fy, ppx, ppy, ...}``. ``T_cam_in_world`` is a
+        4x4 SE3 placing the camera in the robot pelvis / preview frame.
+        Pass ``None`` to leave the camera at its previously-set pose
+        (defaults to identity).
+        """
+        fx = float(intrinsics["fx"])
+        fy = float(intrinsics["fy"])
+        cx = float(intrinsics.get("ppx", intrinsics["width"] / 2.0))
+        cy = float(intrinsics.get("ppy", intrinsics["height"] / 2.0))
+        K = np.array(
+            [[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]],
+            dtype=np.float64,
+        )
+        rr.log(
+            f"{_CAMERA_ROOT}/image",
+            rr.Pinhole(
+                image_from_camera=K,
+                resolution=[int(intrinsics["width"]), int(intrinsics["height"])],
+            ),
+            static=True,
+        )
+        if T_cam_in_world is not None:
+            T = np.asarray(T_cam_in_world, dtype=np.float64).reshape(4, 4)
+            rr.log(
+                _CAMERA_ROOT,
+                rr.Transform3D(translation=T[:3, 3], mat3x3=T[:3, :3]),
+                static=True,
+            )
+
+    def update_camera(
+        self,
+        color: np.ndarray,
+        depth: "np.ndarray | None" = None,
+        depth_scale: float = 0.001,
+    ) -> None:
+        """Log a per-frame RGB image (and optional depth) under ``camera/image``.
+
+        ``color`` is expected in BGR order (RealSense default); it's flipped
+        to RGB for Rerun. ``depth`` is uint16 in units of ``depth_scale``
+        metres — passed through as a ``rr.DepthImage`` with the right
+        ``meter`` factor.
+        """
+        rgb = np.asarray(color)
+        if rgb.ndim == 3 and rgb.shape[2] == 3:
+            rgb = rgb[..., ::-1]  # BGR -> RGB
+        rr.log(f"{_CAMERA_ROOT}/image/rgb", rr.Image(rgb))
+        if depth is not None:
+            meter = 1.0 / max(float(depth_scale), 1e-9)
+            rr.log(
+                f"{_CAMERA_ROOT}/image/depth",
+                rr.DepthImage(np.asarray(depth), meter=meter),
+            )
+
+    def update_pointcloud(
+        self,
+        points: np.ndarray,
+        colors: "np.ndarray | None" = None,
+    ) -> None:
+        """Log a coloured point cloud under ``camera/pointcloud``.
+
+        Inherits the static camera pose so points placed in the camera
+        frame land in the right world-frame location.
+        """
+        if points.size == 0:
+            return
+        if colors is not None and colors.size:
+            rr.log(
+                f"{_CAMERA_ROOT}/pointcloud",
+                rr.Points3D(points, colors=colors, radii=0.002),
+            )
+        else:
+            rr.log(
+                f"{_CAMERA_ROOT}/pointcloud",
+                rr.Points3D(points, radii=0.002),
+            )
 
     def log_message(self, text: str, level: str = "info") -> None:
         """Log a free-text status line into the recording."""
