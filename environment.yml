@@ -1,0 +1,43 @@
+# Reproducible conda environment for g1_inspire_sdk.
+#
+# Why conda and not plain pip:
+#   The IK solver does `from pinocchio import casadi as cpin` (_ik/ik.py).
+#   That needs a Pinocchio build compiled WITH the CasADi bindings. Only the
+#   conda-forge `pinocchio` package ships them -- the PyPI `pin` wheel does
+#   not, and the PyPI package named `pinocchio` is an unrelated project.
+#   So Pinocchio (with CasADi) MUST come from conda-forge.
+#
+# Create with:
+#   conda env create -f environment.yml
+#   conda activate g1_inspire_sdk
+#   pip install -e .                      # installs this SDK + pure-pip deps
+#
+# Then, for LIVE HARDWARE control only, also install the Unitree/Inspire
+# bindings and CycloneDDS -- see README.md ("Required for live hardware").
+#
+# Versions below are pinned to a known-good combination (verified on an
+# existing working checkout). python 3.10/3.11/3.12 all have conda-forge
+# pinocchio builds; 3.12 is the proven one here.
+
+name: g1_inspire_sdk
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  # --- Pinocchio + CasADi (the part that must be conda-forge) ---
+  - pinocchio=3.9          # pulls eigenpy, coal/hpp-fcl; includes pinocchio.casadi
+  - casadi=3.7
+  # --- pure scientific deps (conda-forge so they ABI-match pinocchio) ---
+  - numpy
+  - pyyaml
+  # --- pip-only packages (no good conda-forge build / newer on PyPI) ---
+  - pip
+  - pip:
+      - "rerun-sdk>=0.20"
+      # The SDK itself + its pip extras. Run from the repo root:
+      #   pip install -e .
+      # Add extras as needed:
+      #   pip install -e ".[hand]"     # pymodbus, for live Inspire control
+      #   pip install -e ".[camera]"   # pyrealsense2, for the RealSense D435i

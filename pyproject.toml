@@ -12,11 +12,17 @@ authors = [{ name = "Soofiyan Atar" }]
 dependencies = [
     "numpy",
     "pyyaml",
-    "pinocchio>=3.0",
     "casadi",
     "rerun-sdk>=0.20",
-    # Bring-up note: unitree_sdk2py + inspire_sdkpy live outside PyPI in this
-    # project; install them from your existing checkout. See README.
+    # Pinocchio is intentionally NOT listed here. The code does
+    # `from pinocchio import casadi as cpin` (see _ik/ik.py), which needs a
+    # Pinocchio build that ships the CasADi bindings. Only conda-forge's
+    # `pinocchio` (>=3.0) includes them; the PyPI `pin` wheel does not (and
+    # the PyPI package literally named "pinocchio" is unrelated). Install it
+    # via conda BEFORE `pip install -e .` -- see environment.yml / README.
+    #
+    # Bring-up note: unitree_sdk2py + inspire_sdkpy live outside PyPI; install
+    # them from your checkout (unitree_sdk2py also needs CycloneDDS). See README.
 ]
 
 [project.optional-dependencies]

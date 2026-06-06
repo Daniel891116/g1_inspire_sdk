@@ -34,25 +34,75 @@ entry points everything else can hang off.
 
 - Python ≥ 3.10
 - `numpy`, `pyyaml`
-- `pinocchio` ≥ 3.0 (URDF kinematics + dynamics)
+- `pinocchio` ≥ 3.0 **built with CasADi bindings** (URDF kinematics + the IK)
 - `casadi` (IK NLP)
 - `rerun-sdk` ≥ 0.20 (3D preview)
 
-Install via pip:
+> **Use conda for Pinocchio — pip will not work for the IK.**
+> The IK does `from pinocchio import casadi as cpin` ([_ik/ik.py](g1_inspire_sdk/_ik/ik.py#L19)),
+> which needs a Pinocchio build that ships the CasADi bindings. Two gotchas:
+> 1. On **PyPI** the Pinocchio library is named **`pin`**, *not* `pinocchio`
+>    (the PyPI project called `pinocchio` is an unrelated package that stops at
+>    v0.4 — this is the "pinocchio 3.0 not available for Python 3.10" symptom).
+> 2. Even the correct PyPI wheel (`pin`) **does not include** the
+>    `pinocchio.casadi` module, so the IK fails to import under a pip-only
+>    install. Only the **conda-forge `pinocchio`** package ships them.
+>
+> The import name is always `import pinocchio` regardless of how it was installed.
+
+### Recommended: one-command conda environment
+
+The repo ships a pinned, reproducible [environment.yml](environment.yml):
 
 ```bash
-pip install numpy pyyaml "pinocchio>=3.0" casadi "rerun-sdk>=0.20"
+git clone <your-repo-url> g1_inspire_sdk
+cd g1_inspire_sdk
+conda env create -f environment.yml
+conda activate g1_inspire_sdk
+pip install -e .            # installs this SDK + the pure-pip deps
 ```
+
+This gets you everything for the **dry-run preview** (`dry_run=True`) and the
+IK. For live hardware, continue with the section below.
+
+<details>
+<summary>Manual conda setup (equivalent, if you don't want environment.yml)</summary>
+
+```bash
+conda create -n g1_inspire_sdk -c conda-forge python=3.12 \
+    "pinocchio>=3.0" casadi numpy pyyaml
+conda activate g1_inspire_sdk
+pip install "rerun-sdk>=0.20"
+pip install -e .
+```
+</details>
 
 ### Required for live hardware control only
 
 (Not needed if you only want to use `dry_run=True` for previewing.)
 
-- `unitree_sdk2py` — Unitree's DDS bindings, open-source (BSD-3):
+- `unitree_sdk2py` — Unitree's DDS bindings, open-source (BSD-3). It depends
+  on **CycloneDDS 0.10.x**, which has no self-contained PyPI wheel, so you must
+  build the CycloneDDS C library first and point `CYCLONEDDS_HOME` at it
+  *before* installing the Python package:
 
   ```bash
+  # 1. Build the CycloneDDS C library (one-time)
+  git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
+  cd cyclonedds && mkdir build install && cd build
+  cmake .. -DCMAKE_INSTALL_PREFIX=../install -DBUILD_IDLC=ON
+  cmake --build . --target install
+  cd ../..
+  export CYCLONEDDS_HOME="$PWD/cyclonedds/install"   # add to ~/.bashrc to persist
+
+  # 2. Install the Python bindings (picks up CYCLONEDDS_HOME)
+  pip install cyclonedds==0.10.2
   pip install git+https://github.com/unitreerobotics/unitree_sdk2_python.git
   ```
+
+  Verified working combo: `cyclonedds==0.10.2`. If `import cyclonedds` fails
+  with a missing `libddsc` error, `CYCLONEDDS_HOME` wasn't set when `pip
+  install cyclonedds` ran — reinstall it with the env var exported.
 
 - `inspire_sdkpy` — Inspire hand bindings (BSD-3, shipped by Unitree):
 
@@ -92,15 +142,16 @@ pip install numpy pyyaml "pinocchio>=3.0" casadi "rerun-sdk>=0.20"
 
 ## Install
 
-```bash
-git clone <your-repo-url> g1_inspire_sdk
-cd g1_inspire_sdk
-pip install -e .
-```
+Use the conda environment from [Requirements](#recommended-one-command-conda-environment)
+above — `conda env create -f environment.yml` then `pip install -e .`. The
+`pip install -e .` step makes `g1_inspire_sdk` importable and pulls the pure-pip
+deps, but it deliberately does **not** install Pinocchio (that comes from
+conda-forge — see the note above). A pip-only install will import fine but the
+IK path will fail at `from pinocchio import casadi`.
 
-That makes `g1_inspire_sdk` importable system-wide. Alternatively, the
-example scripts insert the workspace root into `sys.path` on startup, so
-you can run them directly without `pip install`.
+Alternatively, the example scripts insert the workspace root into `sys.path` on
+startup, so you can run them directly without `pip install` (still need the
+conda env active for Pinocchio/CasADi).
 
 ## Layout
 
