@@ -32,12 +32,17 @@ dependencies:
   # --- pure scientific deps (conda-forge so they ABI-match pinocchio) ---
   - numpy
   - pyyaml
-  # --- pip-only packages (no good conda-forge build / newer on PyPI) ---
+  # --- pip-only packages + the SDK itself ---
+  # NOTE: run `conda env create -f environment.yml` from the repo root so the
+  # `-e .` editable install below resolves to this checkout. This installs the
+  # SDK plus its pure-pip deps (rerun-sdk) and the `viz` extra (matplotlib,
+  # meshcat). numpy/pyyaml/casadi/pinocchio are already provided by conda above.
   - pip
   - pip:
-      - "rerun-sdk>=0.20"
-      # The SDK itself + its pip extras. Run from the repo root:
-      #   pip install -e .
-      # Add extras as needed:
-      #   pip install -e ".[hand]"     # pymodbus, for live Inspire control
-      #   pip install -e ".[camera]"   # pyrealsense2, for the RealSense D435i
+      - "-e .[viz]"
+      # Hardware extras -- uncomment as needed (camera/hand may need a real
+      # device or vendor wheels; see README.md):
+      #   - "-e .[hand]"      # pymodbus, for live Inspire hand control
+      #   - "-e .[camera]"    # pyrealsense2, for the RealSense D435i
+      # Live G1/Inspire DDS control also needs unitree_sdk2py + inspire_sdkpy
+      # + CycloneDDS -- those are NOT on PyPI / need a C build; see README.md.

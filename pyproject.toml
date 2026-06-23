@@ -31,9 +31,12 @@ hand = ["pymodbus"]
 # RealSense D435i camera support. Required only when using RealSenseCamera
 # or G1InspireRobot(camera=...). Skip if you only need arm + hand control.
 camera = ["pyrealsense2"]
-# Meshcat-based visualization (only needed when G1_29_ArmIK is constructed
-# with Visualization=True; not used by RerunPreview).
-viz = ["meshcat"]
+# Extra visualization helpers, none on the core path:
+#   - meshcat: only when G1_29_ArmIK is built with Visualization=True
+#     (not used by RerunPreview).
+#   - matplotlib: only for weighted_moving_filter.visualize_filter_comparison()
+#     (a standalone demo plot, imported lazily).
+viz = ["meshcat", "matplotlib"]
 
 [tool.setuptools]
 package-dir = { "" = "." }

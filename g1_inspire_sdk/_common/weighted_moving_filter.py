@@ -1,5 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
+
+# matplotlib is only needed by the visualize_filter_comparison() demo below;
+# it is imported lazily there so importing this module (and the SDK as a whole)
+# does not require matplotlib. Install it via the `[viz]` extra if you want the
+# demo plot.
 
 
 class WeightedMovingFilter:
@@ -45,6 +49,8 @@ class WeightedMovingFilter:
 
 def visualize_filter_comparison(filter_params, steps):
     import time
+
+    import matplotlib.pyplot as plt
 
     t = np.linspace(0, 4 * np.pi, steps)
     original_data = np.array(
