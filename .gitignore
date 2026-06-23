@@ -5,6 +5,11 @@ __pycache__/
 *.so
 .Python
 
+# ...but the vendored Unitree CRC libs are prebuilt binaries that MUST ship
+# (pip-installing unitree_sdk2py from git drops them, breaking live control).
+!third_party/unitree_sdk2_python/unitree_sdk2py/utils/lib/crc_amd64.so
+!third_party/unitree_sdk2_python/unitree_sdk2py/utils/lib/crc_aarch64.so
+
 # Virtual envs
 .venv/
 venv/
@@ -16,6 +21,10 @@ build/
 dist/
 *.egg-info/
 .eggs/
+
+# Vendored CycloneDDS is built from source per-machine — ship the source,
+# never the build output (build/ is covered above; install/ is machine-specific).
+third_party/cyclonedds/install/
 
 # IDE / editor
 .vscode/

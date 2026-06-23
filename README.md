@@ -81,28 +81,38 @@ pip install -e .
 
 (Not needed if you only want to use `dry_run=True` for previewing.)
 
-- `unitree_sdk2py` — Unitree's DDS bindings, open-source (BSD-3). It depends
-  on **CycloneDDS 0.10.x**, which has no self-contained PyPI wheel, so you must
-  build the CycloneDDS C library first and point `CYCLONEDDS_HOME` at it
-  *before* installing the Python package:
+- `unitree_sdk2py` — Unitree's DDS bindings, open-source (BSD-3). **Vendored in
+  this repo** under [third_party/unitree_sdk2_python](third_party/unitree_sdk2_python)
+  (see the note below for why). It depends on **CycloneDDS 0.10.x**, which has no
+  self-contained PyPI wheel. The CycloneDDS C source is **also vendored** under
+  [third_party/cyclonedds](third_party/cyclonedds); build it in-place and point
+  `CYCLONEDDS_HOME` at the result *before* installing the Python package:
 
   ```bash
-  # 1. Build the CycloneDDS C library (one-time)
-  git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
-  cd cyclonedds && mkdir build install && cd build
-  cmake .. -DCMAKE_INSTALL_PREFIX=../install -DBUILD_IDLC=ON
-  cmake --build . --target install
-  cd ../..
-  export CYCLONEDDS_HOME="$PWD/cyclonedds/install"   # add to ~/.bashrc to persist
+  # 1. Build the vendored CycloneDDS C library (one-time, run from the repo root)
+  cd third_party/cyclonedds && mkdir -p build install && cd build
+  cmake .. -DCMAKE_INSTALL_PREFIX=../install -DBUILD_IDLC=ON -DCMAKE_BUILD_TYPE=Release
+  cmake --build . --target install -j"$(nproc)"
+  cd ../../..
+  export CYCLONEDDS_HOME="$PWD/third_party/cyclonedds/install"   # add to ~/.bashrc to persist
 
-  # 2. Install the Python bindings (picks up CYCLONEDDS_HOME)
+  # 2. Install CycloneDDS (picks up CYCLONEDDS_HOME) + the vendored Unitree SDK
   pip install cyclonedds==0.10.2
-  pip install git+https://github.com/unitreerobotics/unitree_sdk2_python.git
+  pip install -e third_party/unitree_sdk2_python
   ```
 
   Verified working combo: `cyclonedds==0.10.2`. If `import cyclonedds` fails
   with a missing `libddsc` error, `CYCLONEDDS_HOME` wasn't set when `pip
   install cyclonedds` ran — reinstall it with the env var exported.
+
+  > **Why vendored, not `pip install git+https://…unitree_sdk2_python.git`:**
+  > installing the SDK straight from its GitHub repo drops the prebuilt CRC
+  > libraries (`unitree_sdk2py/utils/lib/crc_*.so`) — pip never copies them into
+  > `site-packages` — so the first live command dies with
+  > `crc_amd64.so: cannot open shared object file: No such file or directory`.
+  > This repo therefore vendors the SDK with those `.so` files committed (the
+  > root [.gitignore](.gitignore) ignores `*.so` globally but has an explicit
+  > exception for them), and the **editable** install above keeps them in place.
 
 - `inspire_sdkpy` — Inspire hand bindings (BSD-3, by Unitree). It is **vendored
   in this repo** under [third_party/inspire_hand_sdk](third_party/inspire_hand_sdk),
@@ -180,8 +190,12 @@ g1_inspire_sdk/
 │   ├── 03_live_control.py
 │   ├── 04_live_with_preview.py
 │   ├── 05_live_ee_control.py
-│   ├── 06_pick_and_place_preview.py
+│   ├── 06_pick_and_place.py
 │   └── 07_camera_preview.py
+├── third_party/                  # vendored deps
+│   ├── unitree_sdk2_python/      # Unitree DDS bindings + committed crc_*.so
+│   ├── inspire_hand_sdk/         # Inspire hand bindings (inspire_sdkpy)
+│   └── cyclonedds/               # CycloneDDS C source (build/ + install/ are local)
 ├── pyproject.toml
 ├── .gitignore
 └── README.md
@@ -332,5 +346,5 @@ All three are importable from `g1_inspire_sdk`.
 
 ## License
 
-TODO: add a `LICENSE` file. The two embedded SDKs that need to be installed
-separately (`unitree_sdk2py`, `inspire_sdkpy`) are both BSD-3.
+TODO: add a `LICENSE` file. The two SDKs vendored under
+[third_party/](third_party) (`unitree_sdk2py`, `inspire_sdkpy`) are both BSD-3.
