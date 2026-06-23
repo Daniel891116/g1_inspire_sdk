@@ -104,13 +104,18 @@ pip install -e .
   with a missing `libddsc` error, `CYCLONEDDS_HOME` wasn't set when `pip
   install cyclonedds` ran — reinstall it with the env var exported.
 
-- `inspire_sdkpy` — Inspire hand bindings (BSD-3, shipped by Unitree):
+- `inspire_sdkpy` — Inspire hand bindings (BSD-3, by Unitree). It is **vendored
+  in this repo** under [third_party/inspire_hand_sdk](third_party/inspire_hand_sdk),
+  since it is not on PyPI. Install it straight from the checkout — no separate
+  download needed:
 
   ```bash
-  # Install from the Inspire SDK checkout you already use with the robot.
-  # If you don't have one yet, contact the vendor for the wheel.
-  pip install /path/to/inspire_hand_sdk
+  pip install -e third_party/inspire_hand_sdk
   ```
+
+  (The importable module is `inspire_sdkpy`. Installing it also pulls
+  `cyclonedds==0.10.2` and `pymodbus==3.6.9` — see the CycloneDDS note above
+  for the C-library bring-up that `cyclonedds` needs.)
 
 - `pymodbus` — used by the Inspire FSR zero-out. Pulled in via the
   `[hand]` extra:
