@@ -331,6 +331,54 @@ constructor — the same hooks fire in both modes.
 
 All three are importable from `g1_inspire_sdk`.
 
+## Troubleshooting
+
+### `cannot open for writing` / `create domain error` on a shared machine
+
+Symptom — DDS fails to initialize on `connect()` with something like:
+
+```
+python: /tmp/cdds.LOG: cannot open for writing
+[ChannelFactory] create domain error. msg: Occurred upon initialisation of a cyclonedds.domain.Domain
+Exception: channel factory init error.
+```
+
+Cause — CycloneDDS writes its log to the **fixed path `/tmp/cdds.LOG`**. The
+first user to run a DDS program on the machine creates that file owned by *their*
+account. `/tmp` is sticky, so any **other Linux user on the same laptop** can
+neither write nor delete it, and their DDS domain refuses to start. This is the
+classic multi-user gotcha — common when several people share one robot
+workstation with separate logins.
+
+Fix — pick one:
+
+```bash
+# A) Remove the stale file so CycloneDDS recreates it under your account
+#    (/tmp is sticky, so deleting another user's file needs sudo)
+sudo rm -f /tmp/cdds.LOG
+
+# B) Don't share the path at all — point your log at a per-user file.
+#    Add to ~/.bashrc to make it stick across logins.
+export CYCLONEDDS_URI='<CycloneDDS><Domain><Tracing><OutputFile>/tmp/cdds.${HOSTNAME}.'"$USER"'.LOG</OutputFile></Tracing></Domain></CycloneDDS>'
+```
+
+Option **B** is the robust choice on a multi-account machine: every user gets
+their own log file, so the collision never recurs.
+
+### `crc_amd64.so: cannot open shared object file`
+
+You're not using the vendored Unitree SDK. Install it from the checkout
+(`pip install -e third_party/unitree_sdk2_python`), not from its GitHub repo —
+see the [Unitree SDK note](#required-for-live-hardware-control-only) for why the
+git install drops the CRC libraries.
+
+### `Failed to load CycloneDDS library from .../libddsc.so`
+
+`CYCLONEDDS_HOME` points at a path that no longer has `libddsc.so` (e.g. the
+build was moved or never ran). Rebuild the vendored CycloneDDS and re-export the
+variable to `third_party/cyclonedds/install` — see
+[the CycloneDDS build step](#required-for-live-hardware-control-only).
+
 ## Caveats
 
 - `g1.yaml` ships with `hand_mass_kg = 0.0` placeholders. If you use
