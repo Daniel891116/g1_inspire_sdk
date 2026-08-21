@@ -260,8 +260,9 @@ class InspireHand:
         time.sleep(2.0)
 
         if calibrate_force:
-            ip = self._right_ip if "right" in self._sides else self._left_ip
-            _calibrate_force_sensor(ip)
+            for s in self._sides:
+                ip = self._right_ip if s == "right" else self._left_ip
+                _calibrate_force_sensor(ip)
 
         for s in self._sides:
             self._last_target[s] = q.copy()

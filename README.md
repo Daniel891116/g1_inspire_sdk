@@ -191,7 +191,8 @@ g1_inspire_sdk/
 │   ├── 04_live_with_preview.py
 │   ├── 05_live_ee_control.py
 │   ├── 06_pick_and_place.py
-│   └── 07_camera_preview.py
+│   ├── 07_camera_preview.py
+│   └── 08_dual_hand.py          # arm + BOTH hands at once
 ├── third_party/                  # vendored deps
 │   ├── unitree_sdk2_python/      # Unitree DDS bindings + committed crc_*.so
 │   ├── inspire_hand_sdk/         # Inspire hand bindings (inspire_sdkpy)
@@ -250,6 +251,36 @@ with G1InspireRobot("eth0", arm_side="both") as robot:
     ...
 ```
 
+### Drive the arm and BOTH hands at once
+
+Enable both hands with `hand_side="both"` and give each side its Modbus IP.
+`step()` then takes `q_hand_left` **and** `q_hand_right`:
+
+```python
+robot = G1InspireRobot(
+    network_interface="enx6c6e072d3ca1",
+    arm_side="both",
+    hand_side="both",
+    left_ip="192.168.123.210",   # left hand — on the G1 network (G1 back port)
+    right_ip="192.168.11.210",   # right hand — on the switch (laptop side)
+)
+robot.connect()
+robot.initialize()               # opens both hands, force-cals both sides
+robot.start_streaming()
+
+robot.step(ee_targets=(L_tf, R_tf), q_hand_left=qL, q_hand_right=qR)
+```
+
+> **`left_ip` / `right_ip` must match your wiring**, and note these values are
+> the *opposite* of the SDK defaults (`left=192.168.11.210`,
+> `right=192.168.123.210`). Which hand is on which IP depends on how you cabled
+> the hands — see [Wiring & networking](#wiring--networking-live-hardware). The
+> bundled [08_dual_hand.py](examples/08_dual_hand.py) runs this end-to-end:
+>
+> ```bash
+> python examples/08_dual_hand.py --net enx6c6e072d3ca1 --cycles 2
+> ```
+
 ### Add a RealSense camera to the loop
 
 ```python
@@ -279,6 +310,65 @@ with RealSenseCamera(width=640, height=480, fps=30, preview=preview) as cam:
     for _ in range(300):
         cam.capture()    # auto-streams RGB + depth to preview
 ```
+
+## Wiring & networking (live hardware)
+
+Two different transports are in play, and knowing which is which is the key to
+cabling the hands correctly:
+
+- **Arm** — pure **DDS** over the `network_interface` (`--net`) to the G1. This
+  is the only thing that actually travels *to the G1* over DDS.
+- **Each hand** — the laptop runs a **local DDS→Modbus bridge per side**. When
+  you call `set_joint_targets`, the SDK publishes `rt/inspire_hand/ctrl/{l,r}`;
+  a bridge *on the laptop* receives it (DDS loopback) and writes it to the hand
+  over **Modbus TCP at `<hand_ip>:6000`**. State/force reads go the same direct
+  way. So the decisive requirement is: **the laptop must reach each hand's IP
+  over TCP — the `--net` interface does not carry hand commands to the hardware.**
+
+### Reference cabling (single cable + switch)
+
+The rig this was developed on uses one laptop Ethernet cable into a switch,
+which fans out to the G1 and one hand; the other hand hangs off the G1:
+
+```
+ laptop ── enx… ──▶ switch ──┬──▶ G1  ──(G1 back port)──▶ LEFT hand
+                             └──▶ RIGHT hand
+```
+
+Everything lives on **one L2 segment**, reachable through the single interface
+(which carries both the `192.168.123.x` G1 network and the `192.168.11.x` hand
+network). Concretely:
+
+| Hand | Path | Typical IP | SDK arg |
+|------|------|-----------|---------|
+| **Left** | into the G1's back port → on the G1 network | `192.168.123.210` | `left_ip=` |
+| **Right** | into the switch → laptop side | `192.168.11.210` | `right_ip=` |
+
+Rules that make this work:
+
+1. **The two hands must have distinct IPs.** Inspire hands ship at the *same*
+   default `192.168.11.210`; on one shared segment that is an ARP collision, so
+   one hand must be renumbered (e.g. the G1-side hand to `192.168.123.210`).
+2. **`left_ip` / `right_ip` follow the cabling, not the SDK defaults.** With the
+   layout above they are the *reverse* of the built-in defaults.
+3. The `network_interface` needs an address on the G1 network (`192.168.123.x`)
+   so DDS reaches the G1; the same NIC also carries the hand subnet.
+
+### Discovering hand IPs
+
+A hand answers on Modbus TCP `:6000`. To find them on the wire:
+
+```bash
+IFACE=enx6c6e072d3ca1
+for net in 192.168.123 192.168.11; do
+  for i in $(seq 1 254); do ping -c1 -W1 $net.$i >/dev/null 2>&1 & done
+done; wait
+ip neigh show dev $IFACE | grep -vi FAILED      # live hosts
+nc -vz 192.168.11.210 6000                       # ":6000 open" => a hand
+```
+
+If the wrong physical hand responds to a `q_hand_left` command, swap `left_ip`
+and `right_ip`.
 
 ## Control modes
 
